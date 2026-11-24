@@ -39,7 +39,11 @@ def upgrade() -> None:
                 "UPDATE offer_bindings SET ever_synced = TRUE WHERE id = :id"
             ), {"id": binding["id"]})
 
-    op.alter_column("offer_bindings", "ever_synced", server_default=None)
+    # SQLite cannot ALTER COLUMN to remove the temporary default. Keeping the
+    # false server default there is safe; it was needed for existing rows and
+    # mirrors the model's default for newly-created bindings.
+    if connection.dialect.name != "sqlite":
+        op.alter_column("offer_bindings", "ever_synced", server_default=None)
 
 
 def downgrade() -> None:

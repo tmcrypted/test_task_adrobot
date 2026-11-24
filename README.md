@@ -4,17 +4,22 @@
 
 ## Запуск через Docker
 
-Требования: Docker Desktop с включённым Docker Engine.
+Требования: Docker Desktop (Windows/macOS) или Docker Engine + Docker Compose plugin (Linux).
 
-1. Скопируйте `.env.example` в `.env`.
-2. Укажите в `.env` свой `API_KEY` из тестового стенда и замените `CAMPAIGN_PREFIX` на `test_<фамилия>_`.
+1. В корне проекта создайте локальный файл настроек:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. Откройте `.env`, вставьте свой `API_KEY` со страницы тестового стенда и замените `CAMPAIGN_PREFIX` на `test_<фамилия>_`.
 3. Запустите из корня проекта:
 
    ```powershell
    docker compose up --build
    ```
 
-Откройте <http://localhost:8000>. Документация FastAPI доступна на <http://localhost:8000/docs>.
+Дождитесь статуса `healthy` у сервиса `db` и `Up` у `app`, затем откройте <http://localhost:8000>. Документация FastAPI доступна на <http://localhost:8000/docs>.
 
 React собирается внутри Docker-образа, FastAPI отдаёт собранный интерфейс. PostgreSQL хранит локальные черновики, архив связей офферов и историю операций. Данные сохраняются в томе `postgres_data`.
 
@@ -22,12 +27,18 @@ React собирается внутри Docker-образа, FastAPI отдаё�
 
 ## Запуск без Docker
 
-Docker не обязателен. Для локального запуска понадобятся Python 3.12+, Node.js 22+ и npm. В этом режиме приложение по умолчанию использует SQLite; отдельный сервер PostgreSQL не нужен.
+Docker не обязателен. Для локального запуска понадобятся Python 3.12+, Node.js 22+ и npm. В этом режиме приложение использует SQLite; отдельный сервер PostgreSQL не нужен.
 
-Из корня проекта выполните в PowerShell:
+Сначала один раз создайте `.env` и укажите в нём свой `API_KEY` со страницы тестового стенда и префикс `CAMPAIGN_PREFIX` (например, `test_ivanov_`):
 
 ```powershell
-py -3.12 -m venv .venv
+Copy-Item .env.example .env
+```
+
+Далее из корня проекта выполните в PowerShell:
+
+```powershell
+py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r backend\requirements.txt
 npm --prefix frontend ci
@@ -40,7 +51,24 @@ python -m alembic -c backend\alembic.ini upgrade head
 python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-Создайте `.env` из `.env.example` в корне проекта и укажите `API_KEY` перед запуском миграций и приложения. Откройте <http://localhost:8000>. Чтобы запускать backend и frontend вместе, используйте собранный frontend, как в командах выше; `npm run dev` сам по себе не проксирует API.
+На macOS/Linux из корня проекта выполните:
+
+```bash
+cp .env.example .env # один раз; затем укажите в .env свой API_KEY и CAMPAIGN_PREFIX
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+npm ci --prefix frontend
+npm run build --prefix frontend
+
+export PYTHONPATH="$PWD/backend"
+export DATABASE_URL="sqlite:///./adrobot.db"
+export FRONTEND_DIST="$PWD/frontend/dist"
+python -m alembic -c backend/alembic.ini upgrade head
+python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
+```
+
+Откройте <http://localhost:8000>. Backend раздаёт собранный React-интерфейс и API с одного адреса. `npm run dev` сам по себе не проксирует запросы к API.
 
 ## Переменные окружения
 
