@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: adrobot
+      POSTGRES_USER: adrobot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adrobot-local}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adrobot -d adrobot"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://adrobot:${POSTGRES_PASSWORD:-adrobot-local}@db:5432/adrobot
+      KEITARO_BASE_URL: ${KEITARO_BASE_URL:-https://keitaro-for-tests.etolegko.com/admin_api/v1}
+      CAMPAIGN_PREFIX: ${CAMPAIGN_PREFIX:-test_surname_}
+      FRONTEND_DIST: /app/backend/frontend-dist
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
